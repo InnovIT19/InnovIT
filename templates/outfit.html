@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Your Outfit</title>
+    <!-- Add any CSS files or stylesheets here -->
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+            background-image: url('path/to/your/background-image.jpg'); /* Add your background image here */
+            background-size: 1600px 500px; /* Set the size to 1600x500 */
+            background-repeat: no-repeat; /* Ensure the background does not repeat */
+            background-position: center; /* Center the background image */
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9); /* Slightly transparent background */
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            max-width: 90%;
+        }
+        .outfits {
+            display: flex;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .outfit {
+            flex: 0 0 30%;
+            text-align: center;
+            margin: 0 10px;
+        }
+        .outfit img {
+            width: 200px;
+            height: auto;
+            border-radius: 10px;
+        }
+        .outfit:hover {
+            transform: scale(1.05); /* Scale up slightly on hover */
+        }
+        .outfit h2 {
+            margin: 10px 0 5px;
+        }
+        .outfit p {
+            margin: 5px 0;
+        }
+        .arrow {
+            cursor: pointer;
+            font-size: 2em;
+            padding: 0 20px;
+            user-select: none;
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            background: #1e90ff; /* Light blue color */
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 0 10px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #1c86ee; /* Darker shade of light blue */
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: red;
+        }
+        .error {
+            background-color: red;
+            color: #721c24;
+        }
+        container .sortMenu {
+            position: absolute;
+            color: green;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Select Your Outfit</h1>
+
+            <select id="sortMenu" onchange="sortOutfits()">
+                <option value="default" disabled selected>Sort by</option>
+                <option value="price-high">Price - High to Low</option>
+                <option value="price-low">Price - Low to High</option>
+            </select>
+
+
+            <h4>Your Skin Tone Category: {{ predicted_tone }}</h4>
+            <h4>Recommended Colors:</h4>
+            <ul>
+                {% for color in recommended_colors %}
+                    {{ color }},
+                {% endfor %}
+            </ul>
+
+
+        <div class="outfits">
+            <div class="arrow" id="leftArrow" onclick="handlePrevious()">&#9664;</div>
+
+            <div class="outfit" id="outfit1" onclick="selectOutfit(0)">
+                <img src="../static/images/outfit/outfit_img1.png" alt="Outfit 1">
+                <h2>Outfit ID 1</h2>
+                <p>Outfit description 1</p>
+            </div>
+            <div class="outfit" id="outfit2" onclick="selectOutfit(1)">
+                <img src="../static/images/outfit/outfit_img2.png" alt="Outfit 2">
+                <h2>Outfit ID 2</h2>
+                <p>Outfit description 2</p>
+            </div>
+            <div class="outfit" id="outfit3" onclick="selectOutfit(2)">
+                <img src="../static/images/outfit/outfit_img3.png" alt="Outfit 3">
+                <h2>Outfit ID 3</h2>
+                <p>Outfit description 3</p>
+            </div>
+
+            <div class="arrow" id="rightArrow" onclick="handleNext()">&#9654;</div>
+        </div>
+        <p id="feedbackMessage"></p>
+        <div class="button-container">
+            <button onclick="submitOutfit()">Submit</button>
+        </div>
+    </div>
+
+
+
+
+    <script>
+        let recognition;
+        let currentIndex = 0;
+        const outfits = [
+            { id: "Outfit ID 1", description: "Outfit description 1", img: "../static/images/outfit/outfit_img1.png" },
+            { id: "Outfit ID 2", description: "Outfit description 2", img: "../static/images/outfit/outfit_img2.png" },
+            { id: "Outfit ID 3", description: "Outfit description 3", img: "../static/images/outfit/outfit_img3.png" }
+            // Add more outfit objects here
+        ];
+
+        // Function to start voice recognition
+        function startVoiceRecognition() {
+            recognition = new webkitSpeechRecognition(); // Create a new instance of SpeechRecognition
+            recognition.lang = 'en-US'; // Set language to US English
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                console.log('Transcript:', transcript);
+
+                // Convert transcript to outfit selection
+                if (transcript.includes('next')) {
+                    handleNext();
+                } else if (transcript.includes('previous')) {
+                    handlePrevious();
+                } else {
+                    let outfitIndex = outfits.findIndex(outfit => transcript.includes(outfit.id.toLowerCase()));
+                    if (outfitIndex !== -1) {
+                        currentIndex = outfitIndex;
+                        updateOutfits();
+                        displayMessage(`You have selected ${outfits[currentIndex].id}!`, true);
+                    } else {
+                        displayMessage("Could not recognize the outfit or command. Please try again.", false);
+                    }
+                }
+                setTimeout(startVoiceRecognition, 1000);
+            };
+
+            recognition.start(); // Start recognition
+        }
+
+        // Function to update outfits display
+        function updateOutfits() {
+            for (let i = 0; i < 3; i++) {
+                let index = (currentIndex + i) % outfits.length;
+                document.getElementById(`outfit${i+1}`).querySelector('img').src = outfits[index].img;
+                document.getElementById(`outfit${i+1}`).querySelector('h2').textContent = outfits[index].id;
+                document.getElementById(`outfit${i+1}`).querySelector('p').innerHTML = outfits[index].description.replace('\n', '<br>');
+            }
+        }
+
+        // Function to handle the next button click
+        function handleNext() {
+            currentIndex = (currentIndex + 1) % outfits.length;
+            updateOutfits();
+        }
+
+        // Function to handle the previous button click
+        function handlePrevious() {
+            currentIndex = (currentIndex - 1 + outfits.length) % outfits.length;
+            updateOutfits();
+        }
+
+        // Function to select an outfit
+        function selectOutfit(index) {
+            currentIndex = index;
+            displayMessage(`You have selected ${outfits[currentIndex].id}!`, true);
+        }
+
+        // Function to submit the selected outfit
+        function submitOutfit() {
+            // Perform any submission logic (e.g., save to database, etc.)
+            displayMessage(`Outfit ${outfits[currentIndex].id} submitted!`, true);
+            // Redirect to feedback.html or perform any other action
+            window.location.href = '/feedback'; // Adjust as per your routing
+        }
+
+        // Function to display messages
+        function displayMessage(message, isSuccess) {
+            const feedbackMessage = document.getElementById('feedbackMessage');
+            feedbackMessage.textContent = message;
+            feedbackMessage.style.color = isSuccess ? 'green' : 'red';
+        }
+        // Function to sort outfits based on selected option
+        function sortOutfits() {
+            const sortValue = document.getElementById('sortMenu').value;
+            if (sortValue === 'price-high') {
+                outfits.sort((a, b) => b.price - a.price);
+            } else if (sortValue === 'price-low') {
+                outfits.sort((a, b) => a.price - b.price);
+            }
+            updateOutfits();
+        }
+
+        // Initialize the display and start voice recognition
+        window.onload = function() {
+            updateOutfits();
+            startVoiceRecognition();
+        };
+    </script>
+</body>
+</html>

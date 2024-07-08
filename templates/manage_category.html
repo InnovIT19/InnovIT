@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Category</title>
+    <link rel="stylesheet" type="text/css" href="static/css/admin_styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Manage Category</h2>
+        <form method="POST">
+            <div class="form-group">
+                <h3>Add Category</h3>
+                <label for="name">Category Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" required></textarea>
+            </div>
+            <button type="submit" name="add">Add Category</button>
+
+                <h3>Drop Category</h3>
+                <label for="category_id">Select Category to Drop:</label>
+                <select id="category_id" name="category_id" required>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            <button type="submit" name="drop">Drop Category</button>
+            <br>
+            <a href="{{ url_for('index') }}">Back to Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </form>
+    </div>
+</body>
+</html>

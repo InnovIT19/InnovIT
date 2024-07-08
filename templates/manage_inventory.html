@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Inventory</title>
+    <link rel="stylesheet" type="text/css" href="static/css/admin_styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Manage Inventory</h2>
+        <form method="POST">
+            <div class="form-group">
+                <h3>Add Inventory</h3>
+                <label for="material_id">Material:</label>
+                <select id="material_id" name="material_id" required>
+                    {% for material in materials %}
+                    <option value="{{ material.id }}">{{ material.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" name="quantity" required>
+            </div>
+            <button type="submit" name="add">Add Inventory</button>
+
+                <h3>Drop Inventory</h3>
+                <label for="inventory_id">Select Inventory to Drop:</label>
+                <select id="inventory_id" name="inventory_id" required>
+                    {% for item in inventory %}
+                    <option value="{{ item.id }}">{{ item.name }} - {{ item.quantity }}</option>
+                    {% endfor %}
+                </select>
+
+            <button type="submit" name="drop">Drop Inventory</button>
+
+            <br>
+            <a href="{{ url_for('index') }}">Back to Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+
+        </form>
+    </div>
+</body>
+</html>

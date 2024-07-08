@@ -1,0 +1,301 @@
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
+import pyodbc
+import base64
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'  # Ensure to set a secret key for session management
+
+# Configure your database connection here
+server = 'DESKTOP-16A7BAU'
+database = 'fashion'
+username = 'cube_sl'
+password = '123'
+driver = '{ODBC Driver 17 for SQL Server}'
+
+connection_string = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+
+@app.route('/')
+def welcome():
+    return render_template('home.html')
+
+@app.route('/register')
+def register():
+    return render_template('register.html')
+
+@app.route('/user_login')
+def user_login():
+    return render_template('user_login.html')
+
+@app.route('/admin_login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        conn = pyodbc.connect(connection_string)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM Admins WHERE username = ? AND password = ?', (username, password))
+        account = cursor.fetchone()
+        conn.close()
+
+        if account:
+            session['loggedin'] = True
+            session['id'] = account[0]
+            session['username'] = account[1]
+            flash('Logged in successfully!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Incorrect username/password!', 'danger')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('loggedin', None)
+    session.pop('id', None)
+    session.pop('username', None)
+    flash('You have successfully logged out.', 'success')
+    return redirect(url_for('welcome'))
+
+@app.route('/gender', methods=['GET', 'POST'])
+def gender():
+    if request.method == 'POST':
+        data = request.json
+        gender = data.get('gender')
+        phone_number = data.get('phone_number')
+
+        if not gender:
+            return jsonify({'error': 'Gender not provided'}), 400
+        if not phone_number or len(phone_number) != 10:
+            return jsonify({'error': 'Invalid phone number'}), 400
+
+        try:
+            conn = pyodbc.connect(connection_string)
+            cursor = conn.cursor()
+
+            cursor.execute("UPDATE user2 SET gender = ? WHERE PhoneNumber = ?", (gender, phone_number))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({'message': 'Gender updated successfully'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return render_template('gender.html')
+
+@app.route('/submit_phone', methods=['POST'])
+def submit_phone():
+    data = request.json
+    phone_number = data.get('phone_number')
+    gender = data.get('gender')
+
+    if not phone_number or len(phone_number) != 10:
+        return jsonify({'error': 'Invalid phone number'}), 400
+
+    try:
+        conn = pyodbc.connect(connection_string)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM user2 WHERE PhoneNumber = ? AND Gender = ?", (phone_number, gender))
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result:
+            return jsonify({'message': 'Login successful'}), 200
+        else:
+            return jsonify({'error': 'Invalid phone number or gender'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/material', methods=['GET'])
+def material():
+    return render_template('material.html')
+
+@app.route('/submit_material', methods=['POST'])
+def submit_material():
+    data = request.json
+    material = data.get('material')
+    phone_number = session.get('phone_number')
+
+    if not material:
+        return jsonify({'error': 'Material not provided'}), 400
+
+    try:
+        conn = pyodbc.connect(connection_string)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE user2 SET material = ? WHERE PhoneNumber = ?", (material, phone_number))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'Material updated successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/outfitCategory', methods=['GET'])
+def outfit_category():
+    return render_template('outfitCategory.html')
+
+@app.route('/capture_video', methods=['GET'])
+def capture_video():
+    return render_template('capture_video.html')
+
+@app.route('/submit_snapshots', methods=['POST'])
+def submit_snapshots():
+    data = request.get_json()
+    snapshots = data.get('snapshots')
+    phone_number = session.get('phone_number')
+
+    if not phone_number:
+        return jsonify({'message': 'Failed to retrieve phone number for user'})
+
+    try:
+        conn = pyodbc.connect(connection_string)
+        cursor = conn.cursor()
+
+        for snapshot in snapshots:
+            img_data = base64.b64decode(snapshot.split(',')[1])
+            cursor.execute("INSERT INTO video (PhoneNumber, Snapshot) VALUES (?, ?)", phone_number, img_data)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Snapshots saved successfully'})
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({'message': 'Failed to save snapshots'})
+
+@app.route('/outfit', methods=['GET'])
+def outfit():
+    return render_template('outfit.html')
+
+@app.route('/submit', methods=['POST'])
+def submit():
+    # Add your logic here for handling the POST request to /submit
+    return jsonify({'message': 'Submit endpoint reached successfully'}), 200
+
+@app.route('/feedback', methods=['GET', 'POST'])
+def submitFeedback():
+    if request.method == 'POST':
+        try:
+            data = request.json
+            color = data.get('color')
+            size = data.get('size')
+            outfit = data.get('outfit')
+            overall_appearance = data.get('overall_appearance')
+
+            conn = pyodbc.connect(connection_string)
+            cursor = conn.cursor()
+
+            cursor.execute("INSERT INTO feedback (color, size, outfit, overall_appearance) VALUES (?, ?, ?, ?)",
+                           (color, size, outfit, overall_appearance))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            return jsonify({'message': 'Feedback submitted successfully'}), 200
+
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    return render_template('feedback.html')
+
+@app.route('/thank')
+def thank():
+    return render_template('thank.html')
+
+@app.route('/admin_dashboard')
+def index():
+    if 'loggedin' in session:
+        return render_template('admin_dashboard.html')
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/manage_material', methods=['GET', 'POST'])
+def manage_material():
+    if 'loggedin' not in session:
+        return redirect(url_for('login'))
+
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()
+    if request.method == 'POST':
+        if 'add' in request.form:
+            name = request.form['name']
+            description = request.form['description']
+            cursor.execute('INSERT INTO MaterialType (name, description) VALUES (?, ?)', (name, description))
+            conn.commit()
+            flash('Material added successfully!', 'success')
+        elif 'drop' in request.form:
+            material_id = request.form['material_id']
+            cursor.execute('DELETE FROM MaterialType WHERE id = ?', (material_id,))
+            conn.commit()
+            flash('Material dropped successfully!', 'success')
+        return redirect(url_for('manage_material'))
+    cursor.execute('SELECT * FROM MaterialType')
+    materials = cursor.fetchall()
+    conn.close()
+    return render_template('manage_material.html', materials=materials)
+
+
+@app.route('/manage_inventory', methods=['GET', 'POST'])
+def manage_inventory():
+    if 'loggedin' not in session:
+        return redirect(url_for('login'))
+
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()
+    if request.method == 'POST':
+        if 'add' in request.form:
+            material_id = request.form['material_id']
+            quantity = request.form['quantity']
+            cursor.execute('INSERT INTO Inventory (material_id, quantity) VALUES (?, ?)', (material_id, quantity))
+            conn.commit()
+            flash('Inventory updated successfully!', 'success')
+        elif 'drop' in request.form:
+            inventory_id = request.form['inventory_id']
+            cursor.execute('DELETE FROM Inventory WHERE id = ?', (inventory_id,))
+            conn.commit()
+            flash('Inventory item dropped successfully!', 'success')
+        return redirect(url_for('manage_inventory'))
+    cursor.execute(
+        'SELECT Inventory.id, MaterialType.name, Inventory.quantity FROM Inventory JOIN MaterialType ON Inventory.material_id = MaterialType.id')
+    inventory = cursor.fetchall()
+    cursor.execute('SELECT id, name FROM MaterialType')
+    materials = cursor.fetchall()
+    conn.close()
+    return render_template('manage_inventory.html', inventory=inventory, materials=materials)
+
+
+@app.route('/manage_category', methods=['GET', 'POST'])
+def manage_category():
+    if 'loggedin' not in session:
+        return redirect(url_for('login'))
+
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()
+    if request.method == 'POST':
+        if 'add' in request.form:
+            name = request.form['name']
+            description = request.form['description']
+            cursor.execute('INSERT INTO Category (name, description) VALUES (?, ?)', (name, description))
+            conn.commit()
+            flash('Category added successfully!', 'success')
+        elif 'drop' in request.form:
+            category_id = request.form['category_id']
+            cursor.execute('DELETE FROM Category WHERE id = ?', (category_id,))
+            conn.commit()
+            flash('Category dropped successfully!', 'success')
+        return redirect(url_for('manage_category'))
+    cursor.execute('SELECT * FROM Category')
+    categories = cursor.fetchall()
+    conn.close()
+    return render_template('manage_category.html', categories=categories)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
